@@ -1,4 +1,4 @@
-require("dotenv").config(); // garde ça pour le dev local, Render l'ignore
+require("dotenv").config(); // pour dev local seulement
 
 const express = require("express");
 const crypto = require("crypto");
@@ -11,13 +11,12 @@ const API_KEY = process.env.PIONEX_API_KEY;
 const API_SECRET = process.env.PIONEX_API_SECRET;
 const BASE_URL = "https://api.pionex.com";
 
-// Vérification légère (log seulement, ne bloque plus)
+// Log léger si clés absentes (ne bloque pas le démarrage sur Render)
 if (!API_KEY || !API_SECRET) {
-  console.error("ERREUR : PIONEX_API_KEY et/ou PIONEX_API_SECRET manquantes dans les variables d'environnement");
-  // Ne pas faire process.exit(1) ici → Render tuerait le service
+  console.warn("Attention : PIONEX_API_KEY et/ou PIONEX_API_SECRET non définies");
 }
 
-console.log("Clés chargées OK (ou pas, voir logs ci-dessus)");
+console.log("Clés chargées (ou pas) OK");
 
 function sign(message) {
   return crypto.createHmac("sha256", API_SECRET).update(message).digest("hex");
@@ -40,7 +39,7 @@ app.post("/webhook", async (req, res) => {
     side: side.toUpperCase(),
     type: type.toUpperCase(),
     timestamp: timestamp,
-    size: quantity.toString()  // quantité en base asset
+    size: quantity.toString()  // quantité en base asset (ZEC, etc.)
   };
 
   if (price) body.price = price.toString();
@@ -60,6 +59,8 @@ app.post("/webhook", async (req, res) => {
   };
 
   const url = `${BASE_URL}${path}?${queryString}`;
+
+  console.log("URL envoyée :", url);
 
   try {
     const response = await axios.post(url, body, { headers, timeout: 30000 });
